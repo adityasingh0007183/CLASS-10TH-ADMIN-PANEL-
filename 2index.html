@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Supabase लाइब्रेरी -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <title>एडमिन पैनल - PDF खजाना</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <style>
+        /* आपका पूरा CSS यहाँ है - इसमें कोई बदलाव नहीं किया गया है */
+        :root { --sidebar-width: 260px; --sidebar-collapsed-width: 80px; --header-height: 70px; --primary-text: #1d2b35; --secondary-text: #5a6a75; --accent-color: #3498db; --backdrop-blur: 15px; --danger-color: #e74c3c; --success-color: #2ecc71; --warning-color: #f39c12; --purple-color: #8e44ad; --bg-gradient: linear-gradient(120deg, #e0eafc, #cfdef3); --card-bg: rgba(255, 255, 255, 0.6); --header-bg: rgba(255, 255, 255, 0.5); }
+        body.dark-mode { --primary-text: #ecf0f1; --secondary-text: #bdc3c7; --accent-color: #5dade2; --bg-gradient: linear-gradient(120deg, #0f2027, #2c5364); --card-bg: rgba(44, 62, 80, 0.6); --header-bg: rgba(29, 43, 53, 0.5); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg-gradient); color: var(--primary-text); display: flex; overflow: hidden; position: relative; transition: background 0.4s; }
+        .sidebar { position: absolute; top: 0; left: 0; height: 100%; width: var(--sidebar-width); background: var(--header-bg); backdrop-filter: blur(var(--backdrop-blur)); -webkit-backdrop-filter: blur(var(--backdrop-blur)); padding: 20px; display: flex; flex-direction: column; z-index: 100; transition: width 0.3s ease-in-out; border-right: 1px solid rgba(128,128,128,0.1); }
+        body.sidebar-collapsed .sidebar { width: var(--sidebar-collapsed-width); }
+        .sidebar-header { text-align: center; margin-bottom: 30px; height: 50px; display:flex; align-items:center; justify-content:center; }
+        .sidebar-header h2 { font-size: 1.8em; color: var(--primary-text); white-space: nowrap; overflow: hidden; transition: opacity 0.3s; }
+        body.sidebar-collapsed .sidebar-header h2 { opacity: 0; }
+        .sidebar-nav a { display: flex; align-items: center; padding: 15px; color: var(--secondary-text); text-decoration: none; border-radius: 10px; margin-bottom: 10px; font-weight: 500; transition: all 0.3s ease; white-space: nowrap; overflow: hidden; }
+        .sidebar-nav a:hover, .sidebar-nav a.active { background: var(--accent-color); color: white; box-shadow: 0 4px 15px -5px var(--accent-color); }
+        .sidebar-nav a i { font-size: 1.3em; margin-right: 20px; width: 25px; text-align: center; transition: margin 0.3s; }
+        body.sidebar-collapsed .sidebar-nav a span { display: none; }
+        body.sidebar-collapsed .sidebar-nav a { justify-content: center; }
+        body.sidebar-collapsed .sidebar-nav a i { margin-right: 0; }
+        .main-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; margin-left: var(--sidebar-width); transition: margin-left 0.3s ease-in-out; }
+        body.sidebar-collapsed .main-wrapper { margin-left: var(--sidebar-collapsed-width); }
+        .main-header { background: var(--header-bg); backdrop-filter: blur(var(--backdrop-blur)); -webkit-backdrop-filter: blur(var(--backdrop-blur)); padding: 0 25px; height: var(--header-height); display: flex; align-items: center; flex-shrink: 0; border-bottom: 1px solid rgba(128,128,128,0.1); }
+        .menu-toggle { font-size: 1.5em; background: none; border: none; color: var(--primary-text); cursor: pointer; }
+        .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .admin-page { display: none; } .admin-page.active { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .page-header { margin-bottom: 30px; } .page-header h1 { font-size: 2.5em; }
+        .stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 25px; }
+        .stat-card { background: var(--card-bg); padding: 25px; border-radius: 15px; display: flex; align-items: center; border-left: 5px solid; transition: transform 0.3s, box-shadow 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .stat-card .icon { font-size: 2.5em; margin-right: 20px; }
+        .stat-card.blue { border-color: var(--accent-color); } .stat-card.blue .icon { color: var(--accent-color); } .stat-card.green { border-color: var(--success-color); } .stat-card.green .icon { color: var(--success-color); } .stat-card.orange { border-color: var(--warning-color); } .stat-card.orange .icon { color: var(--warning-color); } .stat-card.purple { border-color: var(--purple-color); } .stat-card.purple .icon { color: var(--purple-color); }
+        .stat-card .info h3 { font-size: 2.2em; margin: 0; } .stat-card .info p { color: var(--secondary-text); margin: 0; }
+        .content-box { background: var(--card-bg); padding: 25px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); } 
+        table { width: 100%; border-collapse: collapse; } 
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(128, 128, 128, 0.2); vertical-align: middle;} 
+        th { font-weight: 600; color: var(--secondary-text); text-transform: uppercase; font-size: 0.9em; } 
+        td img { width: 120px; height: 60px; object-fit: cover; border-radius: 8px; } 
+        .form-group { margin-bottom: 20px; } 
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; } 
+        .form-group input, .form-group select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); background: rgba(128,128,128,0.1); color: var(--primary-text); font-size: 1em; } 
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 1em; transition: all 0.3s ease; margin-right: 5px; display: inline-flex; align-items: center; gap: 8px; } 
+        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .btn-primary { background-color: var(--accent-color); color: white; } 
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        select:disabled { background-color: rgba(128,128,128,0.2); cursor: not-allowed; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; } .switch input { opacity: 0; width: 0; height: 0; } .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; } .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; } input:checked + .slider { background-color: var(--accent-color); } input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body class="dark-mode sidebar-collapsed">
+
+    <aside class="sidebar">
+        <div class="sidebar-header"><h2>एडमिन</h2></div>
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-link"><i class="fas fa-tachometer-alt"></i><span>डैशबोर्ड</span></a>
+            <a href="#banners" class="nav-link"><i class="fas fa-images"></i><span>बैनर</span></a>
+            <a href="#content" class="nav-link"><i class="fas fa-list-alt"></i><span>विषय</span></a>
+            <a href="#add-pdf" class="nav-link"><i class="fas fa-file-circle-plus"></i><span>PDF जोड़ें</span></a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="main-header"><button class="menu-toggle"><i class="fas fa-bars"></i></button></header>
+        <main class="main-content">
+            <section id="dashboard" class="admin-page"></section>
+            <section id="banners" class="admin-page"></section>
+            <section id="content" class="admin-page"></section>
+            <section id="add-pdf" class="admin-page"></section>
+        </main>
+    </div>
+
+    <script>
+        // --- स्टेप 1: Supabase से कनेक्ट करें ---
+        const SUPABASE_URL = 'https://qzkjvgabvgiporoaxjve.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6a2p2Z2FidmdpcG9yb2F4anZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0ODczNzAsImV4cCI6MjA3MDA2MzM3MH0.ubk0qEK-YRg6h2NxdFdcsX9q56q6OqytDGDrDEeu27I';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Helper Functions ---
+            const showLoading = (pageElement) => pageElement.innerHTML = `<h3><i class="fas fa-spinner fa-spin"></i> लोड हो रहा है...</h3>`;
+            const showAlert = (message, type = 'success') => alert(message); // सरलता के लिए
+
+            // --- Sidebar Toggle ---
+            document.querySelector('.menu-toggle').addEventListener('click', () => document.body.classList.toggle('sidebar-collapsed'));
+
+            // --- Page Switching Logic ---
+            const switchPage = (hash) => {
+                document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+                const newPage = document.querySelector(hash);
+                if (newPage) newPage.classList.add('active');
+                
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.getAttribute('href') === hash));
+
+                // Load content for the new page
+                if (hash === '#dashboard') renderDashboard();
+                if (hash === '#banners') renderBanners();
+                if (hash === '#content') renderContentExplorer();
+                if (hash === '#add-pdf') renderPdfAddPage();
+            };
+            
+            // --- Page Rendering Functions ---
+            async function renderDashboard() {
+                const page = document.getElementById('dashboard');
+                showLoading(page);
+                const { count: totalSubjects } = await supabaseClient.from('subjects').select('*', { count: 'exact', head: true });
+                const { count: totalPdfs } = await supabaseClient.from('pdfs').select('*', { count: 'exact', head: true });
+                const { count: totalBanners } = await supabaseClient.from('banners').select('*', { count: 'exact', head: true });
+                
+                page.innerHTML = `<div class="page-header"><h1>डैशबोर्ड</h1></div><div class="stat-cards">
+                    <div class="stat-card blue"><div class="icon"><i class="fas fa-book-open-reader"></i></div><div class="info"><h3>${totalSubjects || 0}</h3><p>कुल विषय</p></div></div>
+                    <div class="stat-card green"><div class="icon"><i class="fas fa-file-pdf"></i></div><div class="info"><h3>${totalPdfs || 0}</h3><p>कुल PDFs</p></div></div>
+                    <div class="stat-card orange"><div class="icon"><i class="fas fa-images"></i></div><div class="info"><h3>${totalBanners || 0}</h3><p>कुल बैनर</p></div></div></div>`;
+            }
+
+            async function renderBanners() {
+                const page = document.getElementById('banners');
+                showLoading(page);
+                const { data: banners, error } = await supabaseClient.from('banners').select('*');
+                
+                page.innerHTML = `<div class="page-header"><h1>बैनर मैनेज करें</h1></div>
+                    <div class="content-box"><h3><i class="fas fa-plus-circle"></i> नया बैनर जोड़ें</h3><form id="add-banner-form"><div class="form-group"><label>इमेज URL</label><input type="text" placeholder="https://example.com/image.png" required></div><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i>जोड़ें</button></form></div>
+                    <div class="content-box"><h3>मौजूदा बैनर</h3><table><thead><tr><th>इमेज</th><th>एक्शन</th></tr></thead><tbody>
+                    ${banners && banners.map(b => `<tr><td><img src="${b.imageurl}"></td><td><button class="btn btn-danger" data-action="delete" data-table="banners" data-id="${b.id}"><i class="fas fa-trash"></i>हटाएँ</button></td></tr>`).join('') || `<tr><td colspan="2">कोई बैनर नहीं मिला।</td></tr>`}
+                    </tbody></table></div>`;
+            }
+
+            async function renderPdfAddPage() {
+                const page = document.getElementById('add-pdf');
+                showLoading(page);
+                const { data: subjects } = await supabaseClient.from('subjects').select('id, title');
+                
+                page.innerHTML = `<div class="page-header"><h1><i class="fas fa-file-circle-plus"></i> नया PDF जोड़ें</h1></div>
+                    <div class="content-box"><form id="add-pdf-form">
+                        <div class="form-group"><label>1. विषय चुनें</label><select id="pdf-subject-select" required><option value="" disabled selected>पहले विषय चुनें...</option>${subjects.map(s => `<option value="${s.id}">${s.title}</option>`).join('')}</select></div>
+                        <div class="form-group"><label>2. उप-विषय चुनें</label><select name="category_id" id="pdf-subcategory-select" required disabled><option value="">विषय चुनने के बाद यहाँ देखें</option></select></div><hr style="margin:20px 0;border-color:rgba(128,128,128,0.2);">
+                        <div class="form-group"><label>3. PDF की जानकारी भरें</label><input name="title" type="text" placeholder="PDF का नाम" required></div>
+                        <div class="form-group"><input name="size" type="text" placeholder="फाइल साइज़ (जैसे: 2 MB)"></div>
+                        <div class="form-group"><input name="url" type="text" placeholder="PDF का गूगल ड्राइव या कोई और लिंक" required></div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i>PDF जोड़ें</button></form></div>`;
+            }
+
+            async function renderContentExplorer(path = []) {
+                const page = document.getElementById('content');
+                showLoading(page);
+                let contentHTML = '';
+                if (path.length === 0) { // विषयों की लिस्ट दिखाएं
+                    const { data: subjects } = await supabaseClient.from('subjects').select('*');
+                    contentHTML = `<div class="content-box"><h3>विषय</h3><table><tbody>
+                        ${subjects.map(s => `<tr><td><i class="fas ${s.icon}"></i> ${s.title}</td><td><button class="btn btn-primary" data-action="nav" data-path="${s.id}"><i class="fas fa-eye"></i>उप-श्रेणियाँ देखें</button><button class="btn btn-danger" data-action="delete" data-table="subjects" data-id="${s.id}"><i class="fas fa-trash"></i>हटाएँ</button></td></tr>`).join('') || `<tr><td colspan="2">कोई विषय नहीं मिला।</td></tr>`}</tbody></table></div>
+                        <div class="content-box"><h3><i class="fas fa-plus-circle"></i> नया विषय जोड़ें</h3><form id="add-subject-form"><input name="title" type="text" placeholder="विषय का नाम" required><input name="icon" type="text" placeholder="आइकन (जैसे: fa-book)" required><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i>जोड़ें</button></form></div>`;
+                } else if (path.length === 1) { // उप-श्रेणियों की लिस्ट दिखाएं
+                    const subjectId = path[0];
+                    const { data: subject } = await supabaseClient.from('subjects').select('title').eq('id', subjectId).single();
+                    const { data: subcategories } = await supabaseClient.from('subcategories').select('*').eq('subject_id', subjectId);
+                    contentHTML = `<div class="content-box"><h3><a href="#content" class="nav-link" style="display:inline; padding:0;">विषय</a> / ${subject.title}</h3><table><tbody>
+                        ${subcategories.map(sc => `<tr><td><i class="fas ${sc.icon}"></i> ${sc.title}</td><td><button class="btn btn-danger" data-action="delete" data-table="subcategories" data-id="${sc.id}"><i class="fas fa-trash"></i>हटाएँ</button></td></tr>`).join('') || `<tr><td>कोई उप-श्रेणी नहीं मिली।</td></tr>`}</tbody></table></div>
+                        <div class="content-box"><h3><i class="fas fa-plus-circle"></i> नई उप-श्रेणी जोड़ें</h3><form id="add-subcategory-form" data-subject-id="${subjectId}"><input name="title" type="text" placeholder="उप-श्रेणी का नाम" required><input name="icon" type="text" placeholder="आइकन (जैसे: fa-flask)" required><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i>जोड़ें</button></form></div>`;
+                }
+                page.innerHTML = `<div class="page-header"><h1>विषय मैनेज करें</h1></div>${contentHTML}`;
+            }
+
+            // --- Global Event Handlers ---
+            document.body.addEventListener('change', async e => {
+                if (e.target.id === 'pdf-subject-select') {
+                    const subjectId = e.target.value;
+                    const subcatSelect = document.getElementById('pdf-subcategory-select');
+                    subcatSelect.innerHTML = '<option value="">लोड हो रहा है...</option>';
+                    if (subjectId) {
+                        const { data: subcategories } = await supabaseClient.from('subcategories').select('id, title').eq('subject_id', subjectId);
+                        subcatSelect.innerHTML = subcategories.length > 0 ? subcategories.map(sc => `<option value="${sc.id}">${sc.title}</option>`).join('') : '<option value="" disabled>कोई उप-श्रेणी नहीं</option>';
+                        subcatSelect.disabled = false;
+                    } else { subcatSelect.disabled = true; }
+                }
+            });
+            
+            // --- सभी फॉर्म सबमिशन के लिए एक ही हैंडलर ---
+            document.body.addEventListener('submit', async e => {
+                e.preventDefault();
+                const form = e.target;
+                
+                if (form.id === 'add-banner-form') {
+                    const imageUrl = form.querySelector('input[type="text"]').value;
+                    const { error } = await supabaseClient.from('banners').insert({ imageurl: imageUrl, linkurl: '#' });
+                    if (error) showAlert('गड़बड़ी: ' + error.message, 'danger'); else { showAlert('बैनर जोड़ा गया!'); renderBanners(); }
+                }
+
+                if (form.id === 'add-subject-form') {
+                    const formData = new FormData(form);
+                    const title = formData.get('title');
+                    const { error } = await supabaseClient.from('subjects').insert({ id: title.toLowerCase().replace(/\s+/g,'_'), title, icon: formData.get('icon'), color: 'card-default' });
+                    if (error) showAlert('गड़बड़ी: ' + error.message, 'danger'); else { showAlert('विषय जोड़ा गया!'); renderContentExplorer(); }
+                }
+                
+                if (form.id === 'add-subcategory-form') {
+                    const formData = new FormData(form);
+                    const title = formData.get('title');
+                    const subjectId = form.dataset.subjectId;
+                    const { error } = await supabaseClient.from('subcategories').insert({ id: `${subjectId}_${title.toLowerCase().replace(/\s+/g,'_')}`, title, icon: formData.get('icon'), subject_id: subjectId });
+                    if (error) showAlert('गड़बड़ी: ' + error.message, 'danger'); else { showAlert('उप-श्रेणी जोड़ी गई!'); renderContentExplorer([subjectId]); }
+                }
+
+                if (form.id === 'add-pdf-form') {
+                    const formData = new FormData(form);
+                    const pdfData = Object.fromEntries(formData.entries());
+                    const { error } = await supabaseClient.from('pdfs').insert(pdfData);
+                    if (error) showAlert('गड़बड़ी: ' + error.message, 'danger'); else { showAlert('PDF सफलतापूर्वक जोड़ा गया!'); form.reset(); }
+                }
+            });
+
+            // --- सभी क्लिक्स के लिए एक ही हैंडलर (डिलीट, नेविगेशन) ---
+            document.body.addEventListener('click', async e => {
+                const actionBtn = e.target.closest('[data-action]');
+                if (!actionBtn) return;
+
+                const action = actionBtn.dataset.action;
+                
+                if (action === 'delete') {
+                    if (confirm('क्या आप वाकई इसे हटाना चाहते हैं?')) {
+                        const table = actionBtn.dataset.table;
+                        const id = actionBtn.dataset.id;
+                        const { error } = await supabaseClient.from(table).delete().eq('id', id);
+                        if (error) showAlert('गड़बड़ी: ' + error.message, 'danger');
+                        else {
+                            showAlert('सफलतापूर्वक हटा दिया गया!');
+                            // पेज को रीफ्रेश करें
+                            const currentPage = window.location.hash || '#dashboard';
+                            switchPage(currentPage);
+                        }
+                    }
+                }
+
+                if (action === 'nav') {
+                    const path = actionBtn.dataset.path;
+                    renderContentExplorer(path ? path.split('/') : []);
+                }
+            });
+
+            // --- Initial Load ---
+            window.addEventListener('hashchange', () => switchPage(window.location.hash || '#dashboard'));
+            switchPage(window.location.hash || '#dashboard');
+        });
+    </script>
+</body>
+</html>
